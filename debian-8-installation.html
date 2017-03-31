@@ -37,7 +37,7 @@ Codename:       jessie
 
 <p>Let’s go install some packages:</p>
 
-<pre><code>$ sudo apt-get install python-pip python3-pip python-dev sqlite3 libsqlite3-dev postfix ruby-sass vim git  curl nginx
+<pre><code>$ sudo apt-get install python-pip python3-pip python-dev sqlite3 libsqlite3-dev postfix ruby-sass vim git  curl nginx postgresql-client postgresql postgresql-contrib libpq-dev
 </code></pre>
 
 <p>For postfix installation need to choose the “General type of mail configuration.” Went for option “Internet Site,” and host name mail.vanlu.ga.</p>
@@ -103,9 +103,10 @@ $ source env/bin/activate
 Python 3.4.2
 </code></pre>
 
-<p>Python 3 is the one to use for the “main” mailman installation</p>
+<p>Python 3 is the one to use for the “main” mailman installation (we also need this in Python 2, see postorius configuration)</p>
 
-<pre><code>(env) mm3@jessie:~/mailman$ python setup.py develop
+<pre><code>(env) mm3@jessie:~/mailman$ pip install psycopg2
+(env) mm3@jessie:~/mailman$ python setup.py install
 (env) mm3@jessie:~/mailman$ exit
 </code></pre>
 
@@ -121,7 +122,7 @@ HEAD of master is 15195ac, 2017-02-03, Barry Warsaw, Merge branch 'news' into 'm
 $ cd ~/mailman
 $ source env2/bin/activate
 (env2) mm3@jessie:~/mailman$ cd mailmanclient/
-(env2) mm3@jessie:~/mailman/mailmanclient$ python setup.py develop
+(env2) mm3@jessie:~/mailman/mailmanclient$ python setup.py install
 </code></pre>
 
 <p>(All else will be using Python 2, so we’ll stay in “env2”)</p>
@@ -139,7 +140,7 @@ HEAD of master is 60f551c, Aurélien Bompard, 2017-02-02 11:32:.., Make sure the
 <p>Before running setup.py, install this version of django. Version 1.10 causes trouble!</p>
 
 <pre><code>(env2) mm3@jessie:~/mailman/django-mailman3$ pip install django==1.9
-(env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py develop
+(env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py install
 </code></pre>
 
 <p>Install postorius.</p>
@@ -150,7 +151,7 @@ HEAD of master is 60f551c, Aurélien Bompard, 2017-02-02 11:32:.., Make sure the
 (env2) mm3@jessie:~/mailman/postorius$ whats-git-head 
 Branch is master
 HEAD of master is 6ffddf5, Florian Fuchs, 2017-02-18 06:54:.., Merge branch '3.1' into 'master'                                                                                        
-(env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py develop
+(env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py install
 </code></pre>
 
 <p>Install hyperkitty.</p>
@@ -162,7 +163,7 @@ HEAD of master is 6ffddf5, Florian Fuchs, 2017-02-18 06:54:.., Merge branch '3.1
 Branch is master
 HEAD of master is 45f6e70, Aurélien Bompard, 2017-02-10 15:58:.., Fix typo
 (env2) mm3@jessie:~/mailman/hyperkitty$ pip install rcssmin  
-(env2) mm3@jessie:~/mailman/hyperkitty$ python setup.py develop
+(env2) mm3@jessie:~/mailman/hyperkitty$ python setup.py install
 </code></pre>
 
 <p>Install mailman-hyperkitty, using Python 3!</p>
@@ -174,19 +175,32 @@ $ source env/bin/activate
 (env3) mm3@jessie:~/mailman/mailman-hyperkitty$ whats-git-head 
 Branch is master
 HEAD of master is 10da29c, Aurélien Bompard, 2015-04-29 11:54:.., Version 1.0.0                                                                 
-(env) mm3@jessie:~/mailman/mailman-hyperkitty$ python setup.py develop
+(env) mm3@jessie:~/mailman/mailman-hyperkitty$ python setup.py install
 </code></pre>
 
 <p>Now we have downloaded all that we need. Next is configuration.</p>
 
-<pre><code>$ cd ~/mailman
+<p>First, add a postgres user, add a postgres mm3 user with password and add a database to use.</p>
+
+<pre><code>$ sudo -u postgres psql postgres
+psql (9.4.10)
+Type "help" for help.
+postgres=# \password postgres
+Enter new password: 
+Enter it again: 
+postgres=# \q
+# As postgres user
+$ createuser -P  mm3 # Enter a password e.g. pwdpwdpwd
+$ createdb -O mm3 mm3db
+
+$ cd ~/mailman
 mm3@jessie:~/mailman$ source env/bin/activate # Need Python 3
-(env) mm3@jessie:~/mailman$ mkdir dev-root
-(env) mm3@jessie:~/mailman$ cd dev-root
+(env) mm3@jessie:~/mailman$ mkdir mm3-root
+(env) mm3@jessie:~/mailman$ cd mm3-root
 (env) mm3@jessie:~/mailman$ mailman start
 </code></pre>
 
-<p>Change file var/etc/mailman.cfg; no leading slash; this is still in the dev-root directory!</p>
+<p>Change file var/etc/mailman.cfg; no leading slash; this is still in the mm3-root directory!</p>
 
 <pre><code>(env) mm3@jessie:~/mailman$ cat &gt; var/etc/mailman.cfg &lt;&lt; END_MAILMAN_CFG
 [devmode]
@@ -200,6 +214,9 @@ lmtp_port: 8024
 smtp_host: localhost
 smtp_port: 25
 configuration: python:mailman.config.postfix
+[database]
+class: mailman.database.postgresql.PostgreSQLDatabase
+url: postgres://mm3:pwdpwdpwd@localhost:5432/mm3db
 END_MAILMAN_CFG
 </code></pre>
 
@@ -207,25 +224,60 @@ END_MAILMAN_CFG
 
 <pre><code>(env) mm3@jessie:~/mailman$ mailman stop
 Shutting down Mailman's master runner
-(env) mm3@jessie:~/mailman/dev-root$ mailman start
+(env) mm3@jessie:~/mailman/mm3-root$ mailman start
 Starting Mailman's master runner
 </code></pre>
 
 <p>From now using Python 2 again.</p>
 
-<pre><code>(env) mm3@jessie:~/mailman/dev-root$ exit  # New shell
+<pre><code>(env) mm3@jessie:~/mailman/mm3-root$ exit  # New shell
 $ cd ~/mailman
 $ source env2/bin/activate
+$ pip install psycopg
 (env2) mm3@jessie:~/mailman$ cd postorius
-(env2) mm3@jessie:~/mailman$ cp -r example_project vanluga
+(env2) mm3@jessie:~/mailman/postorius $ cp -r example_project vanluga
 </code></pre>
 
-<p>In file vanluga/settings.py change
-1. SECRET_KEY
-2. ALLOWED_HOSTS = [‘*’, ‘mail.vanlu.ga’]</p>
+<p>In file vanluga/settings.py change</p>
 
-<pre><code>(env2) mm3@jessie:~/mailman$ python vanluga/manage.py  migrate
-(env2) mm3@jessie:~/mailman$ python vanluga/manage.py  createsuperuser
+<ul>
+  <li>SECRET_KEY</li>
+  <li>DEBUG = False</li>
+  <li>ALLOWED_HOSTS = [‘*’, ‘mail.vanlu.ga’]</li>
+  <li>SECURE_HSTS_SECONDS=10</li>
+  <li>SECURE_CONTENT_TYPE_NOSNIFF=True</li>
+  <li>SECURE_BROWSER_XSS_FILTER=True</li>
+  <li>SECURE_SSL_REDIRECT=True</li>
+  <li>SESSION_COOKIE_SECURE=True</li>
+  <li>CSRF_COOKIE_SECURE=True</li>
+  <li>CSRF_COOKIE_HTTPONLY=True</li>
+  <li>X_FRAME_OPTIONS=’DENY’</li>
+  <li>SECURE_HSTS_INCLUDE_SUBDOMAINS=True</li>
+  <li>USE_X_FORWARDED_HOST = True
+and set up</li>
+</ul>
+
+<pre><code>DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mm3db',
+        'USER': 'mm3',
+        'PASSWORD': 'pwdpwdpwd',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+</code></pre>
+
+<pre><code>(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
+(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
+# Translations needed ??(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  compilemessages
+(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  collectstatic
+</code></pre>
+
+<p>As root</p>
+
+<pre><code>$ chown -R  mm3:www-data /home/mm3/mailman/postorius/vanluga/static
 </code></pre>
 
 <p>Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say:
@@ -283,9 +335,9 @@ $ service postfix restart
 
 <p>Add at end of file /etc/postfix/main.cf</p>
 
-<pre><code>transport_maps       = hash:/home/mm3/mailman/dev-root/var/data/postfix_lmtp 
-local_recipient_maps = hash:/home/mm3/mailman/dev-root/var/data/postfix_lmtp
-relay_domains        = hash:/home/mm3/mailman/dev-root/var/data/postfix_domains
+<pre><code>transport_maps       = hash:/home/mm3/mailman/mm3-root/var/data/postfix_lmtp 
+local_recipient_maps = hash:/home/mm3/mailman/mm3-root/var/data/postfix_lmtp
+relay_domains        = hash:/home/mm3/mailman/mm3-root/var/data/postfix_domains
 </code></pre>
 
 <p>Run command, as root:</p>
@@ -304,6 +356,7 @@ $ source env2/bin/activate
   <li>SECRET_KEY = ‘mm3-mailman-hyperkitty-123’</li>
   <li>ALLOWED_HOSTS:   “mail.vanlu.ga”</li>
   <li>MAILMAN_ARCHIVER_KEY:   “MMMSecretArchiverAPIKey”</li>
+  <li>USE_X_FORWARDED_HOST = True</li>
   <li>
     <p>Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)</p>
 
@@ -326,7 +379,7 @@ api_key: MMMSecretArchiverAPIKey
 END_HYPERKITTY_CFG
 </code></pre>
 
-<p>And add to file ~/mailman/dev-root/var/etc/mailman.cfg :</p>
+<p>And add to file ~/mailman/mm3-root/var/etc/mailman.cfg :</p>
 
 <pre><code>[archiver.hyperkitty]
 class: mailman_hyperkitty.Archiver
@@ -368,18 +421,19 @@ events {
         worker_connections 768;
 }
 http {
-        sendfile on;
-        tcp_nopush on;
-        tcp_nodelay on;
-        keepalive_timeout 65;
-        types_hash_max_size 2048;
-        include /etc/nginx/mime.types;
-        default_type application/octet-stream;
-        ssl_prefer_server_ciphers on;
-        access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
-        gzip on;
-        gzip_disable "msie6";
+  sendfile on;
+  tcp_nopush on;
+  tcp_nodelay on;
+  keepalive_timeout 65;
+  types_hash_max_size 2048;
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  ssl_prefer_server_ciphers on;
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+  gzip on;
+  gzip_disable "msie6";
+
   server {
     server_name localhost mail.vanlu.ga;
     listen 100;
@@ -394,10 +448,22 @@ http {
         access_log off;
     }
     location /hyperkitty {
+      proxy_redirect off;
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Host $host;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Server $host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_pass http://localhost:8002/hyperkitty;
     }
     location / {
+      proxy_redirect off;
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Host $host;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Server $host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_pass http://localhost:8000;
     }

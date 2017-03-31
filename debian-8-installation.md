@@ -27,7 +27,7 @@ Everything following is in the VM.
 
 Let's go install some packages:
 
-    $ sudo apt-get install python-pip python3-pip python-dev sqlite3 libsqlite3-dev postfix ruby-sass vim git  curl nginx
+    $ sudo apt-get install python-pip python3-pip python-dev sqlite3 libsqlite3-dev postfix ruby-sass vim git  curl nginx postgresql-client postgresql postgresql-contrib libpq-dev
 
 For postfix installation need to choose the "General type of mail configuration." Went for option "Internet Site," and host name mail.vanlu.ga.
 
@@ -86,9 +86,10 @@ Check out these virtualenvs:
     (env) mm3@jessie:~/mailman$ python --version
     Python 3.4.2
 
-Python 3 is the one to use for the "main" mailman installation
+Python 3 is the one to use for the "main" mailman installation (we also need this in Python 2, see postorius configuration)
 
-    (env) mm3@jessie:~/mailman$ python setup.py develop
+    (env) mm3@jessie:~/mailman$ pip install psycopg2
+    (env) mm3@jessie:~/mailman$ python setup.py install
     (env) mm3@jessie:~/mailman$ exit
 
 Install mailmanclient.
@@ -103,7 +104,7 @@ Install mailmanclient.
     $ cd ~/mailman
     $ source env2/bin/activate
     (env2) mm3@jessie:~/mailman$ cd mailmanclient/
-    (env2) mm3@jessie:~/mailman/mailmanclient$ python setup.py develop
+    (env2) mm3@jessie:~/mailman/mailmanclient$ python setup.py install
 
 (All else will be using Python 2, so we'll stay in "env2")
 
@@ -119,7 +120,7 @@ Install django-mailman3.
 Before running setup.py, install this version of django. Version 1.10 causes trouble!
 
     (env2) mm3@jessie:~/mailman/django-mailman3$ pip install django==1.9
-    (env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py develop
+    (env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py install
 
 Install postorius.
 
@@ -129,7 +130,7 @@ Install postorius.
     (env2) mm3@jessie:~/mailman/postorius$ whats-git-head 
     Branch is master
     HEAD of master is 6ffddf5, Florian Fuchs, 2017-02-18 06:54:.., Merge branch '3.1' into 'master'                                                                                        
-    (env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py develop
+    (env2) mm3@jessie:~/mailman/django-mailman3$ python setup.py install
 
 Install hyperkitty.
 
@@ -140,7 +141,7 @@ Install hyperkitty.
     Branch is master
     HEAD of master is 45f6e70, Aurélien Bompard, 2017-02-10 15:58:.., Fix typo
     (env2) mm3@jessie:~/mailman/hyperkitty$ pip install rcssmin  
-    (env2) mm3@jessie:~/mailman/hyperkitty$ python setup.py develop
+    (env2) mm3@jessie:~/mailman/hyperkitty$ python setup.py install
 
 Install mailman-hyperkitty, using Python 3!
 
@@ -151,17 +152,30 @@ Install mailman-hyperkitty, using Python 3!
     (env3) mm3@jessie:~/mailman/mailman-hyperkitty$ whats-git-head 
     Branch is master
     HEAD of master is 10da29c, Aurélien Bompard, 2015-04-29 11:54:.., Version 1.0.0                                                                 
-    (env) mm3@jessie:~/mailman/mailman-hyperkitty$ python setup.py develop
+    (env) mm3@jessie:~/mailman/mailman-hyperkitty$ python setup.py install
 
 Now we have downloaded all that we need. Next is configuration.
 
+First, add a postgres user, add a postgres mm3 user with password and add a database to use.
+
+    $ sudo -u postgres psql postgres
+    psql (9.4.10)
+    Type "help" for help.
+    postgres=# \password postgres
+    Enter new password: 
+    Enter it again: 
+    postgres=# \q
+    # As postgres user
+    $ createuser -P  mm3 # Enter a password e.g. pwdpwdpwd
+    $ createdb -O mm3 mm3db
+
     $ cd ~/mailman
     mm3@jessie:~/mailman$ source env/bin/activate # Need Python 3
-    (env) mm3@jessie:~/mailman$ mkdir dev-root
-    (env) mm3@jessie:~/mailman$ cd dev-root
+    (env) mm3@jessie:~/mailman$ mkdir mm3-root
+    (env) mm3@jessie:~/mailman$ cd mm3-root
     (env) mm3@jessie:~/mailman$ mailman start
 
-Change file var/etc/mailman.cfg; no leading slash; this is still in the dev-root directory!
+Change file var/etc/mailman.cfg; no leading slash; this is still in the mm3-root directory!
 
     (env) mm3@jessie:~/mailman$ cat > var/etc/mailman.cfg << END_MAILMAN_CFG
     [devmode]
@@ -175,29 +189,66 @@ Change file var/etc/mailman.cfg; no leading slash; this is still in the dev-root
     smtp_host: localhost
     smtp_port: 25
     configuration: python:mailman.config.postfix
+    [database]
+    class: mailman.database.postgresql.PostgreSQLDatabase
+    url: postgres://mm3:pwdpwdpwd@localhost:5432/mm3db
     END_MAILMAN_CFG
 
 Then kill the mailman process, and restart
 
     (env) mm3@jessie:~/mailman$ mailman stop
     Shutting down Mailman's master runner
-    (env) mm3@jessie:~/mailman/dev-root$ mailman start
+    (env) mm3@jessie:~/mailman/mm3-root$ mailman start
     Starting Mailman's master runner
 
 From now using Python 2 again.
 
-    (env) mm3@jessie:~/mailman/dev-root$ exit  # New shell
+    (env) mm3@jessie:~/mailman/mm3-root$ exit  # New shell
     $ cd ~/mailman
     $ source env2/bin/activate
+    $ pip install psycopg
     (env2) mm3@jessie:~/mailman$ cd postorius
-    (env2) mm3@jessie:~/mailman$ cp -r example_project vanluga
+    (env2) mm3@jessie:~/mailman/postorius $ cp -r example_project vanluga
 
 In file vanluga/settings.py change
-1. SECRET_KEY
-2. ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
 
-    (env2) mm3@jessie:~/mailman$ python vanluga/manage.py  migrate
-    (env2) mm3@jessie:~/mailman$ python vanluga/manage.py  createsuperuser
++ SECRET_KEY
++ DEBUG = False
++ ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
++ SECURE_HSTS_SECONDS=10
++ SECURE_CONTENT_TYPE_NOSNIFF=True
++ SECURE_BROWSER_XSS_FILTER=True
++ SECURE_SSL_REDIRECT=True
++ SESSION_COOKIE_SECURE=True
++ CSRF_COOKIE_SECURE=True
++ CSRF_COOKIE_HTTPONLY=True
++ X_FRAME_OPTIONS='DENY'
++ SECURE_HSTS_INCLUDE_SUBDOMAINS=True
++ USE_X_FORWARDED_HOST = True
+and set up
+
+~~~~~~~~
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mm3db',
+        'USER': 'mm3',
+        'PASSWORD': 'pwdpwdpwd',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+~~~~~~~~
+
+
+    (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
+    (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
+    # Translations needed ??(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  compilemessages
+    (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  collectstatic
+
+As root
+
+    $ chown -R  mm3:www-data /home/mm3/mailman/postorius/vanluga/static
 
 Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say:
     Superuser created successfully.
@@ -245,9 +296,9 @@ In a browser, go to http://127.0.0.1:8000/admin/. Login as admin or whatever set
 
 Add at end of file /etc/postfix/main.cf
 
-    transport_maps       = hash:/home/mm3/mailman/dev-root/var/data/postfix_lmtp 
-    local_recipient_maps = hash:/home/mm3/mailman/dev-root/var/data/postfix_lmtp
-    relay_domains        = hash:/home/mm3/mailman/dev-root/var/data/postfix_domains
+    transport_maps       = hash:/home/mm3/mailman/mm3-root/var/data/postfix_lmtp 
+    local_recipient_maps = hash:/home/mm3/mailman/mm3-root/var/data/postfix_lmtp
+    relay_domains        = hash:/home/mm3/mailman/mm3-root/var/data/postfix_domains
 
 Run command, as root:
 
@@ -263,7 +314,8 @@ Set in file vanluga/settings.py:
 1. SECRET_KEY = 'mm3-mailman-hyperkitty-123'
 2. ALLOWED_HOSTS:   "mail.vanlu.ga"
 3. MAILMAN_ARCHIVER_KEY:   "MMMSecretArchiverAPIKey"
-4. Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)
+4. USE_X_FORWARDED_HOST = True
+5. Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)
 
     (env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate --pythonpath vanluga --settings settings
     (env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
@@ -281,7 +333,7 @@ Run as root, presumably:
     api_key: MMMSecretArchiverAPIKey
     END_HYPERKITTY_CFG
 
-And add to file ~/mailman/dev-root/var/etc/mailman.cfg :
+And add to file ~/mailman/mm3-root/var/etc/mailman.cfg :
 
     [archiver.hyperkitty]
     class: mailman_hyperkitty.Archiver
@@ -321,18 +373,19 @@ Put in nginx.conf:
             worker_connections 768;
     }
     http {
-            sendfile on;
-            tcp_nopush on;
-            tcp_nodelay on;
-            keepalive_timeout 65;
-            types_hash_max_size 2048;
-            include /etc/nginx/mime.types;
-            default_type application/octet-stream;
-            ssl_prefer_server_ciphers on;
-            access_log /var/log/nginx/access.log;
-            error_log /var/log/nginx/error.log;
-            gzip on;
-            gzip_disable "msie6";
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      ssl_prefer_server_ciphers on;
+      access_log /var/log/nginx/access.log;
+      error_log /var/log/nginx/error.log;
+      gzip on;
+      gzip_disable "msie6";
+
       server {
         server_name localhost mail.vanlu.ga;
         listen 100;
@@ -347,10 +400,22 @@ Put in nginx.conf:
             access_log off;
         }
         location /hyperkitty {
+          proxy_redirect off;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Server $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_pass http://localhost:8002/hyperkitty;
         }
         location / {
+          proxy_redirect off;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Server $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_pass http://localhost:8000;
         }
