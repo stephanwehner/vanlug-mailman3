@@ -1,6 +1,6 @@
 # Installing Mailman 3 under Debian 8
 
-March 9, 2017.
+May 2017.
 
 We'll use Vagrant:
 
@@ -212,19 +212,29 @@ From now using Python 2 again.
 
 In file vanluga/settings.py change
 
-+ SECRET_KEY
-+ DEBUG = False
-+ ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
-+ SECURE_HSTS_SECONDS=10
-+ SECURE_CONTENT_TYPE_NOSNIFF=True
-+ SECURE_BROWSER_XSS_FILTER=True
-+ SECURE_SSL_REDIRECT=True
-+ SESSION_COOKIE_SECURE=True
-+ CSRF_COOKIE_SECURE=True
-+ CSRF_COOKIE_HTTPONLY=True
-+ X_FRAME_OPTIONS='DENY'
-+ SECURE_HSTS_INCLUDE_SUBDOMAINS=True
-+ USE_X_FORWARDED_HOST = True
+~~~~~~~~
+SECRET_KEY
+DEBUG = False
+ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
+SECURE_HSTS_SECONDS=10
+SECURE_CONTENT_TYPE_NOSNIFF=True
+SECURE_BROWSER_XSS_FILTER=True
+CSRF_COOKIE_HTTPONLY=True
+X_FRAME_OPTIONS='DENY'
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+USE_X_FORWARDED_HOST = True
+SECURE_HSTS_SECONDS=10
+SECURE_CONTENT_TYPE_NOSNIFF=True
+SECURE_BROWSER_XSS_FILTER=True
+~~~~~~~~
+
+If the server is set up for https, add these:
+~~~~~~~~
+SECURE_SSL_REDIRECT=True -- HTTPS ONLY
+SESSION_COOKIE_SECURE=True -- HTTPS ONLY
+CSRF_COOKIE_SECURE=True -- HTTPS ONLY
+~~~~~~~~
+
 and set up
 
 ~~~~~~~~
@@ -240,6 +250,11 @@ DATABASES = {
 }
 ~~~~~~~~
 
+Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
+
+Then run these:
 
     (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
     (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
@@ -316,6 +331,7 @@ Set in file vanluga/settings.py:
 3. MAILMAN_ARCHIVER_KEY:   "MMMSecretArchiverAPIKey"
 4. USE_X_FORWARDED_HOST = True
 5. Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)
+6. Set DATABASES as above
 
     (env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate --pythonpath vanluga --settings settings
     (env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
@@ -341,6 +357,10 @@ And add to file ~/mailman/mm3-root/var/etc/mailman.cfg :
     configuration: /home/mm3/mailman/mailman-hyperkitty/mailman-hyperkitty.cfg
 
 Restart mailman, see above.
+
+Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
 
 Run hyperkitty server.
 
@@ -421,3 +441,6 @@ Put in nginx.conf:
         }
       }
     }
+
+
+To search visit URL http://mail.vanlu.ga/hyperkitty/search .

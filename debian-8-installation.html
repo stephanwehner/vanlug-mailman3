@@ -9,7 +9,7 @@
 <body>
 <h1 id="installing-mailman-3-under-debian-8">Installing Mailman 3 under Debian 8</h1>
 
-<p>March 9, 2017.</p>
+<p>May 2017.</p>
 
 <p>We’ll use Vagrant:</p>
 
@@ -240,22 +240,29 @@ $ pip install psycopg
 
 <p>In file vanluga/settings.py change</p>
 
-<ul>
-  <li>SECRET_KEY</li>
-  <li>DEBUG = False</li>
-  <li>ALLOWED_HOSTS = [‘*’, ‘mail.vanlu.ga’]</li>
-  <li>SECURE_HSTS_SECONDS=10</li>
-  <li>SECURE_CONTENT_TYPE_NOSNIFF=True</li>
-  <li>SECURE_BROWSER_XSS_FILTER=True</li>
-  <li>SECURE_SSL_REDIRECT=True</li>
-  <li>SESSION_COOKIE_SECURE=True</li>
-  <li>CSRF_COOKIE_SECURE=True</li>
-  <li>CSRF_COOKIE_HTTPONLY=True</li>
-  <li>X_FRAME_OPTIONS=’DENY’</li>
-  <li>SECURE_HSTS_INCLUDE_SUBDOMAINS=True</li>
-  <li>USE_X_FORWARDED_HOST = True
-and set up</li>
-</ul>
+<pre><code>SECRET_KEY
+DEBUG = False
+ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
+SECURE_HSTS_SECONDS=10
+SECURE_CONTENT_TYPE_NOSNIFF=True
+SECURE_BROWSER_XSS_FILTER=True
+CSRF_COOKIE_HTTPONLY=True
+X_FRAME_OPTIONS='DENY'
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+USE_X_FORWARDED_HOST = True
+SECURE_HSTS_SECONDS=10
+SECURE_CONTENT_TYPE_NOSNIFF=True
+SECURE_BROWSER_XSS_FILTER=True
+</code></pre>
+
+<p>If the server is set up for https, add these:
+~~~~~~~~
+SECURE_SSL_REDIRECT=True – HTTPS ONLY
+SESSION_COOKIE_SECURE=True – HTTPS ONLY
+CSRF_COOKIE_SECURE=True – HTTPS ONLY
+~~~~~~~~</p>
+
+<p>and set up</p>
 
 <pre><code>DATABASES = {
     'default': {
@@ -268,6 +275,13 @@ and set up</li>
     }
 }
 </code></pre>
+
+<p>Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:</p>
+
+<pre><code>os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
+</code></pre>
+
+<p>Then run these:</p>
 
 <pre><code>(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
 (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
@@ -357,8 +371,9 @@ $ source env2/bin/activate
   <li>ALLOWED_HOSTS:   “mail.vanlu.ga”</li>
   <li>MAILMAN_ARCHIVER_KEY:   “MMMSecretArchiverAPIKey”</li>
   <li>USE_X_FORWARDED_HOST = True</li>
+  <li>Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)</li>
   <li>
-    <p>Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)</p>
+    <p>Set DATABASES as above</p>
 
     <p>(env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate –pythonpath vanluga –settings settings
  (env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
@@ -388,6 +403,11 @@ configuration: /home/mm3/mailman/mailman-hyperkitty/mailman-hyperkitty.cfg
 </code></pre>
 
 <p>Restart mailman, see above.</p>
+
+<p>Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:</p>
+
+<pre><code>os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
+</code></pre>
 
 <p>Run hyperkitty server.</p>
 
@@ -470,5 +490,7 @@ http {
   }
 }
 </code></pre>
+
+<p>To search visit URL http://mail.vanlu.ga/hyperkitty/search .</p>
 </body>
 </html>
