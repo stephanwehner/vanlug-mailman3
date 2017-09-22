@@ -206,14 +206,14 @@ From now using Python 2 again.
     (env) mm3@jessie:~/mailman/mm3-root$ exit  # New shell
     $ cd ~/mailman
     $ source env2/bin/activate
-    $ pip install psycopg
+    $ pip install psycopg2
     (env2) mm3@jessie:~/mailman$ cd postorius
     (env2) mm3@jessie:~/mailman/postorius $ cp -r example_project vanluga
 
 In file vanluga/settings.py change
 
 ~~~~~~~~
-SECRET_KEY
+SECRET_KEY = 'Use your own secret key"
 DEBUG = False
 ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
 SECURE_HSTS_SECONDS=10
@@ -229,6 +229,7 @@ SECURE_BROWSER_XSS_FILTER=True
 ~~~~~~~~
 
 If the server is set up for https, add these:
+
 ~~~~~~~~
 SECURE_SSL_REDIRECT=True -- HTTPS ONLY
 SESSION_COOKIE_SECURE=True -- HTTPS ONLY
@@ -250,6 +251,17 @@ DATABASES = {
 }
 ~~~~~~~~
 
+Find the line 
+
+~~~~~~~~
+ROOT_URLCONF = 'urls'
+~~~~~~~~
+
+and set it to -- but only after running the next three commands:
+
+    ROOT_URLCONF = 'vanluga.urls'
+
+
 Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
@@ -258,15 +270,17 @@ Then run these:
 
     (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
     (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
-    # Translations needed ??(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  compilemessages
+
+Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say: "Superuser created successfully."
+
+Set up static files:
+
     (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  collectstatic
 
 As root
 
     $ chown -R  mm3:www-data /home/mm3/mailman/postorius/vanluga/static
 
-Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say:
-    Superuser created successfully.
 
 Side topic; configuration of postfix (taken from http://thinlight.org/2012/03/10/postfix-only-allow-whitelisted-recipient-domains/). For development/test rides, find it convenient to use mailinator.com addresses but want to avoid sending emails to any other domain (bugs/misconfiguration/etc). Put this in /etc/postfix/recipient_domains:
 
@@ -333,9 +347,23 @@ Set in file vanluga/settings.py:
 5. Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)
 6. Set DATABASES as above
 
-    (env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate --pythonpath vanluga --settings settings
-    (env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
-    (env2) mm3@jessie:~/mailman/hyperkitty$ python vanluga/manage.py collectstatic # Answer yes when prompted
+Find the line 
+
+~~~~~~~~
+ROOT_URLCONF = 'urls'
+~~~~~~~~
+
+and set it to -- but only after running the next three commands:
+
+    ROOT_URLCONF = 'vanluga.urls'
+
+
+~~~~~~~~
+(env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate --pythonpath vanluga --settings settings
+(env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
+(env2) mm3@jessie:~/mailman/hyperkitty$ python vanluga/manage.py collectstatic # Answer yes when prompted
+~~~~~~~~
+
 
 Run as root, presumably:
 
