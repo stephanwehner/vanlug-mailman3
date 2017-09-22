@@ -233,14 +233,14 @@ Starting Mailman's master runner
 <pre><code>(env) mm3@jessie:~/mailman/mm3-root$ exit  # New shell
 $ cd ~/mailman
 $ source env2/bin/activate
-$ pip install psycopg
+$ pip install psycopg2
 (env2) mm3@jessie:~/mailman$ cd postorius
 (env2) mm3@jessie:~/mailman/postorius $ cp -r example_project vanluga
 </code></pre>
 
 <p>In file vanluga/settings.py change</p>
 
-<pre><code>SECRET_KEY
+<pre><code>SECRET_KEY = 'Use your own secret key"
 DEBUG = False
 ALLOWED_HOSTS = \['*', 'mail.vanlu.ga'\]
 SECURE_HSTS_SECONDS=10
@@ -255,12 +255,12 @@ SECURE_CONTENT_TYPE_NOSNIFF=True
 SECURE_BROWSER_XSS_FILTER=True
 </code></pre>
 
-<p>If the server is set up for https, add these:
-~~~~~~~~
-SECURE_SSL_REDIRECT=True – HTTPS ONLY
-SESSION_COOKIE_SECURE=True – HTTPS ONLY
-CSRF_COOKIE_SECURE=True – HTTPS ONLY
-~~~~~~~~</p>
+<p>If the server is set up for https, add these:</p>
+
+<pre><code>SECURE_SSL_REDIRECT=True -- HTTPS ONLY
+SESSION_COOKIE_SECURE=True -- HTTPS ONLY
+CSRF_COOKIE_SECURE=True -- HTTPS ONLY
+</code></pre>
 
 <p>and set up</p>
 
@@ -276,6 +276,16 @@ CSRF_COOKIE_SECURE=True – HTTPS ONLY
 }
 </code></pre>
 
+<p>Find the line</p>
+
+<pre><code>ROOT_URLCONF = 'urls'
+</code></pre>
+
+<p>and set it to – but only after running the next three commands:</p>
+
+<pre><code>ROOT_URLCONF = 'vanluga.urls'
+</code></pre>
+
 <p>Change the line for DJANGO_SETTINGS_MODULE in file vanluga/wsgi.py:</p>
 
 <pre><code>os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vanluga.settings")
@@ -285,17 +295,19 @@ CSRF_COOKIE_SECURE=True – HTTPS ONLY
 
 <pre><code>(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  migrate
 (env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  createsuperuser
-# Translations needed ??(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  compilemessages
-(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  collectstatic
+</code></pre>
+
+<p>Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say: “Superuser created successfully.”</p>
+
+<p>Set up static files:</p>
+
+<pre><code>(env2) mm3@jessie:~/mailman/postorius $ python vanluga/manage.py  collectstatic
 </code></pre>
 
 <p>As root</p>
 
 <pre><code>$ chown -R  mm3:www-data /home/mm3/mailman/postorius/vanluga/static
 </code></pre>
-
-<p>Fill Username, password and email as desired. You will need to follow a verification link that is sent to the email; so better use one that works. Then it will say:
-    Superuser created successfully.</p>
 
 <p>Side topic; configuration of postfix (taken from http://thinlight.org/2012/03/10/postfix-only-allow-whitelisted-recipient-domains/). For development/test rides, find it convenient to use mailinator.com addresses but want to avoid sending emails to any other domain (bugs/misconfiguration/etc). Put this in /etc/postfix/recipient_domains:</p>
 
@@ -372,14 +384,23 @@ $ source env2/bin/activate
   <li>MAILMAN_ARCHIVER_KEY:   “MMMSecretArchiverAPIKey”</li>
   <li>USE_X_FORWARDED_HOST = True</li>
   <li>Change sassc to sass in the COMPRESS_PRECOMPILERS section (2 lines)</li>
-  <li>
-    <p>Set DATABASES as above</p>
-
-    <p>(env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate –pythonpath vanluga –settings settings
- (env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
- (env2) mm3@jessie:~/mailman/hyperkitty$ python vanluga/manage.py collectstatic # Answer yes when prompted</p>
-  </li>
+  <li>Set DATABASES as above</li>
 </ol>
+
+<p>Find the line</p>
+
+<pre><code>ROOT_URLCONF = 'urls'
+</code></pre>
+
+<p>and set it to – but only after running the next three commands:</p>
+
+<pre><code>ROOT_URLCONF = 'vanluga.urls'
+</code></pre>
+
+<pre><code>(env2) mm3@jessie:~/mailman/hyperkitty$ django-admin migrate --pythonpath vanluga --settings settings
+(env2) mm3@jessie:~/mailman/hyperkitty$ pip install whoosh
+(env2) mm3@jessie:~/mailman/hyperkitty$ python vanluga/manage.py collectstatic # Answer yes when prompted
+</code></pre>
 
 <p>Run as root, presumably:</p>
 
